@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnimalByIdServer } from '@/lib/firestore-data-server'
-import { requireAuth } from '@/lib/auth-server'
 import { updateAnimal } from '@/lib/firestore-data'
 import { AnimalFormData } from '@/types/animal'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
+// Conditional imports based on environment
+let getAnimalByIdFunc: any, requireAuthFunc: any
+
+if (process.env.NODE_ENV === 'development') {
+  console.log('Loading development modules for [id] route...')
+  const { getAnimalByIdDev } = require('@/lib/firestore-data-dev')
+  const { requireAuthDev } = require('@/lib/auth-server-dev')
+  getAnimalByIdFunc = getAnimalByIdDev
+  requireAuthFunc = requireAuthDev
+} else {
+  console.log('Loading production modules for [id] route...')
+  const { getAnimalByIdServer } = require('@/lib/firestore-data-server')
+  const { requireAuth } = require('@/lib/auth-server')
+  getAnimalByIdFunc = getAnimalByIdServer
+  requireAuthFunc = requireAuth
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await requireAuth(request)
-    const animal = await getAnimalByIdServer(params.id, userId)
+    const userId = await requireAuthFunc(request)
+    const animal = await getAnimalByIdFunc(params.id, userId)
     
     if (!animal) {
       return NextResponse.json(
@@ -43,7 +58,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await requireAuth(request)
+    const userId = await requireAuthFunc(request)
     const data = await request.formData()
     
     // Extract form fields
@@ -80,7 +95,7 @@ export async function PUT(
     }
 
     // Check if animal exists
-    const existingAnimal = await getAnimalByIdServer(params.id, userId)
+    const existingAnimal = await getAnimalByIdFunc(params.id, userId)
     if (!existingAnimal) {
       return NextResponse.json(
         { error: 'Animal not found' },

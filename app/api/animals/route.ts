@@ -1,15 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addAnimalServer, getAnimalsServer } from '@/lib/firestore-data-server'
-import { requireAuth } from '@/lib/auth-server'
 import { AnimalFormData } from '@/types/animal'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
+// Conditional imports based on environment
+let addAnimalFunc: any, getAnimalsFunc: any, requireAuthFunc: any
+
+if (process.env.NODE_ENV === 'development') {
+  console.log('Loading development modules...')
+  const { addAnimalDev, getAnimalsDev } = require('@/lib/firestore-data-dev')
+  const { requireAuthDev } = require('@/lib/auth-server-dev')
+  addAnimalFunc = addAnimalDev
+  getAnimalsFunc = getAnimalsDev
+  requireAuthFunc = requireAuthDev
+} else {
+  console.log('Loading production modules...')
+  const { addAnimalServer, getAnimalsServer } = require('@/lib/firestore-data-server')
+  const { requireAuth } = require('@/lib/auth-server')
+  addAnimalFunc = addAnimalServer
+  getAnimalsFunc = getAnimalsServer
+  requireAuthFunc = requireAuth
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireAuth(request)
-    const animals = await getAnimalsServer(userId)
+    const userId = await requireAuthFunc(request)
+    const animals = await getAnimalsFunc(userId)
     return NextResponse.json(animals)
   } catch (error) {
     console.error('Error fetching animals:', error)
@@ -33,7 +50,7 @@ export async function POST(request: NextRequest) {
     console.log('Request headers:', Object.fromEntries(request.headers.entries()))
     
     // Verify authentication first
-    const userId = await requireAuth(request)
+    const userId = await requireAuthFunc(request)
     console.log('2. Authentication successful, userId:', userId)
     
     console.log('3. Parsing form data...')
@@ -120,7 +137,7 @@ export async function POST(request: NextRequest) {
     console.log('    - profilePictureUrl:', profilePictureUrl)
     console.log('    - formData.name:', formData.name)
     
-    const animal = await addAnimalServer(formData, profilePictureUrl, userId)
+    const animal = await addAnimalFunc(formData, profilePictureUrl, userId)
     console.log('13. Animal created successfully:', animal.id)
     
     return NextResponse.json(animal, { status: 201 })

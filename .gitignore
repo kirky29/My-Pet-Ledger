@@ -47,3 +47,6 @@ temp/
 
 # Local data (since we're using Firestore now)
 data/
+
+# Development data files
+dev-animals.json
