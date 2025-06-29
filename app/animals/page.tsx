@@ -28,12 +28,15 @@ export default function AnimalsPage() {
   useEffect(() => {
     async function fetchAnimals() {
       if (!user) {
+        console.log('🔍 Animals Page: No user, skipping fetch')
         setLoading(false)
         return
       }
 
       try {
+        console.log('🔍 Animals Page: Starting to fetch animals for user:', user.uid)
         const data = await getAnimals()
+        console.log('✅ Animals Page: Fetched animals:', data.length, 'animals', data)
         setAllAnimals(data)
         
         const filteredData = settings.display.showDeceased 
@@ -42,7 +45,7 @@ export default function AnimalsPage() {
         setAnimals(filteredData)
         setFilteredAnimals(filteredData)
       } catch (error) {
-        console.error('Error fetching animals:', error)
+        console.error('❌ Animals Page: Error fetching animals:', error)
       } finally {
         setLoading(false)
       }

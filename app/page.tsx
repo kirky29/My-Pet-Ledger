@@ -52,7 +52,9 @@ export default function HomePage() {
       }
 
       try {
+        console.log('🔍 Dashboard: Starting to fetch animals...')
         const data = await getAnimals()
+        console.log('✅ Dashboard: Fetched animals:', data.length, 'animals')
         setAllAnimals(data)
         
         const filteredData = settings.display.showDeceased 
@@ -61,7 +63,7 @@ export default function HomePage() {
         setAnimals(filteredData)
         setFilteredAnimals(filteredData)
       } catch (error) {
-        console.error('Error fetching animals:', error)
+        console.error('❌ Dashboard: Error fetching animals:', error)
       } finally {
         setLoading(false)
       }
