@@ -73,9 +73,14 @@ export async function addAnimalServer(formData: AnimalFormData, profilePictureUr
       updatedAt: FieldValue.serverTimestamp()
     })
     
+    console.log('Successfully added animal:', animalId)
     return animal
   } catch (error) {
     console.error('Error adding animal:', error)
+    if (error instanceof Error) {
+      console.error('Error details:', error.message)
+      console.error('Error stack:', error.stack)
+    }
     throw error
   }
 }
