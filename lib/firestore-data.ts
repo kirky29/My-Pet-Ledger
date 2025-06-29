@@ -65,14 +65,27 @@ function cleanForFirestore(obj: any): any {
 // Get all animals
 export async function getAnimals(): Promise<Animal[]> {
   try {
+    console.log('🔍 getAnimals: Starting function')
+    
+    if (!auth.currentUser) {
+      console.log('❌ getAnimals: No authenticated user found')
+      return []
+    }
+    
     const userId = getCurrentUserId()
+    console.log('✅ getAnimals: Got userId:', userId)
+    
     const animalsRef = collection(db, ANIMALS_COLLECTION)
     const q = query(animalsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'))
+    console.log('🔍 getAnimals: Executing Firestore query...')
+    
     const querySnapshot = await getDocs(q)
+    console.log('📊 getAnimals: Query returned', querySnapshot.size, 'documents')
     
     const animals: Animal[] = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      console.log('📝 getAnimals: Processing document', doc.id, 'with data:', { name: data.name, species: data.species })
       animals.push({
         ...data,
         id: doc.id,
@@ -82,9 +95,10 @@ export async function getAnimals(): Promise<Animal[]> {
       } as Animal)
     })
     
+    console.log('✅ getAnimals: Returning', animals.length, 'animals:', animals.map(a => a.name))
     return animals
   } catch (error) {
-    console.error('Error getting animals:', error)
+    console.error('❌ getAnimals: Error occurred:', error)
     return []
   }
 }
