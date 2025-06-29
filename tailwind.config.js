@@ -1,0 +1,90 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Nature/Sanctuary inspired palette
+        primary: {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+        },
+        secondary: {
+          50: '#fefce8',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+        },
+        earth: {
+          50: '#faf8f5',
+          100: '#f5f1ea',
+          200: '#e8ddd0',
+          300: '#d6c4aa',
+          400: '#c4a782',
+          500: '#a68660',
+          600: '#8b6f47',
+          700: '#6d5537',
+          800: '#4a3728',
+          900: '#2d1f19',
+        },
+        forest: {
+          50: '#f7f8f7',
+          100: '#e8f5e8',
+          200: '#d1ebd1',
+          300: '#9fd89f',
+          400: '#6cb56c',
+          500: '#4a934a',
+          600: '#3a7c3a',
+          700: '#2d5f2d',
+          800: '#1f4a1f',
+          900: '#143314',
+        },
+        sage: {
+          50: '#f6f7f4',
+          100: '#e9ede3',
+          200: '#d3dbc8',
+          300: '#b8c5a5',
+          400: '#9aab7f',
+          500: '#7d8f5c',
+          600: '#647145',
+          700: '#4f5936',
+          800: '#3d442a',
+          900: '#2a3020',
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-nature': 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%)',
+        'gradient-earth': 'linear-gradient(135deg, #fefce8 0%, #fef3c7 50%, #fde68a 100%)',
+        'gradient-forest': 'linear-gradient(135deg, #f7f8f7 0%, #e8f5e8 50%, #d1ebd1 100%)',
+      },
+      boxShadow: {
+        'nature': '0 4px 20px rgba(34, 197, 94, 0.15)',
+        'earth': '0 4px 20px rgba(245, 158, 11, 0.15)',
+        'soft': '0 2px 15px rgba(0, 0, 0, 0.08)',
+      },
+    },
+  },
+  plugins: [],
+} 
