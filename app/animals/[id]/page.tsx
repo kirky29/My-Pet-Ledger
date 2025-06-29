@@ -8,6 +8,7 @@ import { ArrowLeft, Edit, Calendar, Heart, MapPin, Scale, Ruler, Stethoscope, Ha
 import { Animal } from '@/types/animal'
 import { calculateAge, calculateDetailedAge, formatDate, getSpeciesDisplayName, getSpeciesColor } from '@/lib/utils'
 import EventTimeline from '@/components/EventTimeline'
+import { useAuth } from '@/lib/auth-context'
 
 interface AnimalProfilePageProps {
   params: {
@@ -16,13 +17,25 @@ interface AnimalProfilePageProps {
 }
 
 export default function AnimalProfilePage({ params }: AnimalProfilePageProps) {
+  const { user } = useAuth()
   const [animal, setAnimal] = useState<Animal | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchAnimal() {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
       try {
-        const response = await fetch(`/api/animals/${params.id}`)
+        const idToken = await user.getIdToken()
+        const response = await fetch(`/api/animals/${params.id}`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        })
+        
         if (response.ok) {
           const data = await response.json()
           setAnimal(data)
@@ -37,11 +50,19 @@ export default function AnimalProfilePage({ params }: AnimalProfilePageProps) {
       }
     }
     fetchAnimal()
-  }, [params.id])
+  }, [params.id, user])
 
   const refreshAnimal = async () => {
+    if (!user) return
+
     try {
-      const response = await fetch(`/api/animals/${params.id}`)
+      const idToken = await user.getIdToken()
+      const response = await fetch(`/api/animals/${params.id}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      })
+      
       if (response.ok) {
         const data = await response.json()
         setAnimal(data)

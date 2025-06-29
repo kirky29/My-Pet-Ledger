@@ -7,9 +7,11 @@ import AnimalGrid from '@/components/AnimalGrid'
 import { Animal } from '@/types/animal'
 import { getSpeciesDisplayName } from '@/lib/utils'
 import { useSettings } from '@/lib/settings-context'
+import { useAuth } from '@/lib/auth-context'
 
 export default function AnimalsPage() {
   const { settings } = useSettings()
+  const { user } = useAuth()
   const [allAnimals, setAllAnimals] = useState<Animal[]>([])
   const [animals, setAnimals] = useState<Animal[]>([])
   const [filteredAnimals, setFilteredAnimals] = useState<Animal[]>([])
@@ -24,16 +26,31 @@ export default function AnimalsPage() {
   // Fetch animals on component mount
   useEffect(() => {
     async function fetchAnimals() {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
       try {
-        const response = await fetch('/api/animals')
-        const data = await response.json()
-        setAllAnimals(data)
+        const idToken = await user.getIdToken()
+        const response = await fetch('/api/animals', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        })
         
-        const filteredData = settings.display.showDeceased 
-          ? data 
-          : data.filter((animal: Animal) => !animal.deathDate)
-        setAnimals(filteredData)
-        setFilteredAnimals(filteredData)
+        if (response.ok) {
+          const data = await response.json()
+          setAllAnimals(data)
+          
+          const filteredData = settings.display.showDeceased 
+            ? data 
+            : data.filter((animal: Animal) => !animal.deathDate)
+          setAnimals(filteredData)
+          setFilteredAnimals(filteredData)
+        } else {
+          console.error('Failed to fetch animals:', response.status)
+        }
       } catch (error) {
         console.error('Error fetching animals:', error)
       } finally {
@@ -41,7 +58,7 @@ export default function AnimalsPage() {
       }
     }
     fetchAnimals()
-  }, [settings.display.showDeceased])
+  }, [settings.display.showDeceased, user])
 
   // Get unique species from all animals
   const availableSpecies = Array.from(new Set(allAnimals.map(animal => animal.species))).sort()
