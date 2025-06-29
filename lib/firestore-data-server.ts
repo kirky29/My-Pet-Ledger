@@ -1,6 +1,4 @@
 import { Animal, AnimalFormData } from '@/types/animal'
-import { adminDb } from './firebase-admin'
-import { FieldValue } from 'firebase-admin/firestore'
 import { v4 as uuidv4 } from 'uuid'
 
 // Helper function to clean data for Firestore (remove undefined values)
@@ -65,6 +63,11 @@ export async function addAnimalServer(formData: AnimalFormData, profilePictureUr
 
   try {
     const cleanedAnimal = cleanForFirestore(animal)
+    
+    // Dynamically import Firebase Admin modules
+    const { adminDb } = await import('./firebase-admin')
+    const { FieldValue } = await import('firebase-admin/firestore')
+    
     const docRef = adminDb.collection('animals').doc(animalId)
     await docRef.set({
       ...cleanedAnimal,
@@ -88,6 +91,9 @@ export async function addAnimalServer(formData: AnimalFormData, profilePictureUr
 // Get all animals for a user (server-side version)
 export async function getAnimalsServer(userId: string): Promise<Animal[]> {
   try {
+    // Dynamically import Firebase Admin modules
+    const { adminDb } = await import('./firebase-admin')
+    
     const animalsRef = adminDb.collection('animals')
     const querySnapshot = await animalsRef
       .where('userId', '==', userId)
@@ -95,7 +101,7 @@ export async function getAnimalsServer(userId: string): Promise<Animal[]> {
       .get()
     
     const animals: Animal[] = []
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((doc: any) => {
       const data = doc.data()
       animals.push({
         ...data,
@@ -116,6 +122,9 @@ export async function getAnimalsServer(userId: string): Promise<Animal[]> {
 // Get animal by ID (server-side version)
 export async function getAnimalByIdServer(id: string, userId: string): Promise<Animal | null> {
   try {
+    // Dynamically import Firebase Admin modules
+    const { adminDb } = await import('./firebase-admin')
+    
     const docRef = adminDb.collection('animals').doc(id)
     const docSnap = await docRef.get()
     

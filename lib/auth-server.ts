@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { adminAuth } from './firebase-admin'
 
 export async function verifyAuthToken(request: NextRequest): Promise<string | null> {
   console.log('=== verifyAuthToken - Starting ===')
@@ -40,6 +39,8 @@ export async function verifyAuthToken(request: NextRequest): Promise<string | nu
     
     // In production, verify the token properly
     console.log('Production mode: verifying token with Firebase Admin')
+    // Dynamically import Firebase Admin only in production
+    const { adminAuth } = await import('./firebase-admin')
     const decodedToken = await adminAuth.verifyIdToken(token)
     console.log('Token verified successfully, uid:', decodedToken.uid)
     return decodedToken.uid
