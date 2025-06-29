@@ -7,6 +7,7 @@ import { AnimalFormData, AnimalSpecies, Animal } from '@/types/animal'
 import { getDefaultHeightUnit, getDefaultWeightUnit, getSpeciesDisplayName } from '@/lib/utils'
 import { useFieldOptions } from '@/lib/settings-context'
 import { useAuth } from '@/lib/auth-context'
+import { debugLog } from './DebugLogger'
 import { Heart, Calendar, Scale, Stethoscope, Camera, X } from 'lucide-react'
 
 const animalSpecies: AnimalSpecies[] = [
@@ -182,12 +183,24 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
     }
   }, [isEdit, animal])
 
+  // Debug logging
+  useEffect(() => {
+    debugLog.info('📋 AnimalForm component mounted', { 
+      isEdit, 
+      hasAnimal: !!animal,
+      animalId: animal?.id,
+      userUid: user?.uid,
+      availableSpeciesCount: availableSpecies.length
+    })
+  }, [])
+
   // Set default species from available species when component loads
   useEffect(() => {
     if (availableSpecies.length > 0 && !isEdit && formData.species === 'dog') {
       // Convert the first available species to lowercase to match AnimalSpecies type
       const defaultSpecies = availableSpecies[0].toLowerCase()
       setFormData(prev => ({ ...prev, species: defaultSpecies as AnimalSpecies }))
+      debugLog.info('🐕 Default species set', { defaultSpecies })
     }
   }, [availableSpecies, isEdit, formData.species])
 
@@ -223,23 +236,36 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    debugLog.info('🚀 Form submission started', { 
+      isEdit, 
+      animalName: formData.name,
+      hasProfilePicture: !!profilePicture 
+    })
+    
     if (!validateForm()) {
+      debugLog.error('❌ Form validation failed', errors)
       return
     }
+    debugLog.success('✅ Form validation passed')
 
     if (!user) {
+      debugLog.error('❌ User not authenticated')
       setErrors({ submit: 'You must be logged in to add an animal' })
       return
     }
+    debugLog.info('👤 User authenticated', { uid: user.uid, email: user.email })
 
     setIsSubmitting(true)
 
     try {
+      debugLog.info('🔑 Getting user ID token...')
       // Get the user's ID token
       const idToken = await user.getIdToken()
+      debugLog.success('✅ ID token obtained', { tokenLength: idToken.length })
       
       const url = isEdit && animal ? `/api/animals/${animal.id}` : '/api/animals'
       const method = isEdit ? 'PUT' : 'POST'
+      debugLog.info(`📡 Preparing ${method} request to ${url}`)
       
       // Use FormData for file upload
       const formDataToSubmit = new FormData()
@@ -250,12 +276,22 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
           formDataToSubmit.append(key, value)
         }
       })
+      debugLog.info('📝 Form data prepared', { 
+        fields: Object.keys(formData).filter(key => formData[key as keyof AnimalFormData] !== ''),
+        totalFields: Object.keys(formData).length
+      })
       
       // Add profile picture if selected
       if (profilePicture) {
         formDataToSubmit.append('profilePicture', profilePicture)
+        debugLog.info('📷 Profile picture added', { 
+          fileName: profilePicture.name,
+          fileSize: profilePicture.size,
+          fileType: profilePicture.type
+        })
       }
       
+      debugLog.info('🌐 Sending API request...')
       const response = await fetch(url, {
         method,
         headers: {
@@ -264,19 +300,50 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
         body: formDataToSubmit, // Don't set Content-Type header, let browser set it with boundary
       })
 
+      debugLog.info('📨 API response received', { 
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
       if (response.ok) {
         const resultAnimal = await response.json()
+        debugLog.success('🎉 Animal created successfully!', { 
+          animalId: resultAnimal.id,
+          animalName: resultAnimal.name
+        })
         router.push(`/animals/${resultAnimal.id}`)
       } else {
-        const error = await response.json()
-        setErrors({ submit: error.error || `Failed to ${isEdit ? 'update' : 'add'} animal` })
+        const errorText = await response.text()
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText }
+        }
+        
+        debugLog.error('❌ API Error Response', { 
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          errorText
+        })
+        
+        setErrors({ submit: errorData.error || `Failed to ${isEdit ? 'update' : 'add'} animal` })
       }
     } catch (error) {
+      debugLog.error('💥 Network/Fetch Error', { 
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined,
+        error
+      })
       console.error('Error submitting form:', error)
       setErrors({ submit: 'Network error. Please try again.' })
     }
 
     setIsSubmitting(false)
+    debugLog.info('🏁 Form submission completed')
   }
 
   const handleInputChange = (field: keyof AnimalFormData, value: string) => {

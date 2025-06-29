@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation'
 import { SettingsProvider } from '@/lib/settings-context'
 import { AuthProvider } from '@/lib/auth-context'
 import AuthWrapper from '@/components/AuthWrapper'
+import DebugLogger from '@/components/DebugLogger'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
             </SettingsProvider>
           </AuthWrapper>
         </AuthProvider>
+        <DebugLogger />
       </body>
     </html>
   )
