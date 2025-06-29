@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { AnimalFormData, AnimalSpecies, Animal } from '@/types/animal'
 import { getDefaultHeightUnit, getDefaultWeightUnit, getSpeciesDisplayName } from '@/lib/utils'
 import { useFieldOptions } from '@/lib/settings-context'
+import { useAuth } from '@/lib/auth-context'
 import { Heart, Calendar, Scale, Stethoscope, Camera, X } from 'lucide-react'
 
 const animalSpecies: AnimalSpecies[] = [
@@ -111,6 +112,7 @@ interface AnimalFormProps {
 
 export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) {
   const router = useRouter()
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [profilePicture, setProfilePicture] = useState<File | null>(null)
@@ -225,9 +227,17 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
       return
     }
 
+    if (!user) {
+      setErrors({ submit: 'You must be logged in to add an animal' })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
+      // Get the user's ID token
+      const idToken = await user.getIdToken()
+      
       const url = isEdit && animal ? `/api/animals/${animal.id}` : '/api/animals'
       const method = isEdit ? 'PUT' : 'POST'
       
@@ -248,6 +258,9 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
       
       const response = await fetch(url, {
         method,
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        },
         body: formDataToSubmit, // Don't set Content-Type header, let browser set it with boundary
       })
 
@@ -256,9 +269,10 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
         router.push(`/animals/${resultAnimal.id}`)
       } else {
         const error = await response.json()
-        setErrors({ submit: error.message || `Failed to ${isEdit ? 'update' : 'add'} animal` })
+        setErrors({ submit: error.error || `Failed to ${isEdit ? 'update' : 'add'} animal` })
       }
     } catch (error) {
+      console.error('Error submitting form:', error)
       setErrors({ submit: 'Network error. Please try again.' })
     }
 

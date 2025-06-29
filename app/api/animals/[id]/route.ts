@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnimalById, updateAnimal } from '@/lib/firestore-data'
+import { getAnimalByIdServer } from '@/lib/firestore-data-server'
+import { requireAuth } from '@/lib/auth-server'
+import { updateAnimal } from '@/lib/firestore-data'
 import { AnimalFormData } from '@/types/animal'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
@@ -10,7 +12,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const animal = await getAnimalById(params.id)
+    const userId = await requireAuth(request)
+    const animal = await getAnimalByIdServer(params.id, userId)
     
     if (!animal) {
       return NextResponse.json(
@@ -22,6 +25,12 @@ export async function GET(
     return NextResponse.json(animal)
   } catch (error) {
     console.error('Error fetching animal:', error)
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to fetch animal' },
       { status: 500 }
@@ -34,6 +43,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await requireAuth(request)
     const data = await request.formData()
     
     // Extract form fields
@@ -70,7 +80,7 @@ export async function PUT(
     }
 
     // Check if animal exists
-    const existingAnimal = await getAnimalById(params.id)
+    const existingAnimal = await getAnimalByIdServer(params.id, userId)
     if (!existingAnimal) {
       return NextResponse.json(
         { error: 'Animal not found' },
@@ -170,6 +180,12 @@ export async function PUT(
     return NextResponse.json(updatedAnimal)
   } catch (error) {
     console.error('Error updating animal:', error)
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to update animal' },
       { status: 500 }

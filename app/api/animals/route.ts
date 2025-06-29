@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addAnimal, getAnimals } from '@/lib/firestore-data'
+import { addAnimalServer, getAnimalsServer } from '@/lib/firestore-data-server'
+import { requireAuth } from '@/lib/auth-server'
 import { AnimalFormData } from '@/types/animal'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const animals = await getAnimals()
+    const userId = await requireAuth(request)
+    const animals = await getAnimalsServer(userId)
     return NextResponse.json(animals)
   } catch (error) {
     console.error('Error fetching animals:', error)
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to fetch animals' },
       { status: 500 }
@@ -20,6 +28,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication first
+    const userId = await requireAuth(request)
+    
     const data = await request.formData()
     
     // Extract form fields
@@ -89,11 +100,17 @@ export async function POST(request: NextRequest) {
       profilePictureUrl = `/uploads/${fileName}`
     }
 
-    const animal = await addAnimal(formData, profilePictureUrl)
+    const animal = await addAnimalServer(formData, profilePictureUrl, userId)
     
     return NextResponse.json(animal, { status: 201 })
   } catch (error) {
     console.error('Error creating animal:', error)
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to create animal' },
       { status: 500 }
