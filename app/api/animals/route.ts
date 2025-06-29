@@ -27,13 +27,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('=== POST /api/animals - Starting animal creation ===')
   try {
+    console.log('1. Attempting to verify authentication...')
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()))
+    
     // Verify authentication first
     const userId = await requireAuth(request)
+    console.log('2. Authentication successful, userId:', userId)
     
+    console.log('3. Parsing form data...')
     const data = await request.formData()
+    console.log('4. Form data keys:', Array.from(data.keys()))
     
     // Extract form fields
+    console.log('5. Extracting form fields...')
     const formData: AnimalFormData = {
       name: data.get('name') as string,
       species: data.get('species') as any,
@@ -57,18 +65,24 @@ export async function POST(request: NextRequest) {
       ownerPhone: data.get('ownerPhone') as string,
       ownerAddress: data.get('ownerAddress') as string,
     }
+    console.log('6. Form data extracted:', { name: formData.name, species: formData.species })
     
     // Basic validation
+    console.log('7. Validating form data...')
     if (!formData.name) {
+      console.log('ERROR: Missing required field: name')
       return NextResponse.json(
         { error: 'Missing required field: name' },
         { status: 400 }
       )
     }
+    console.log('8. Validation passed')
 
     // Handle profile picture upload
+    console.log('9. Handling profile picture...')
     let profilePictureUrl = ''
     const profilePictureFile = data.get('profilePicture') as File
+    console.log('10. Profile picture file:', profilePictureFile ? `${profilePictureFile.name} (${profilePictureFile.size} bytes)` : 'none')
     
     if (profilePictureFile && profilePictureFile.size > 0) {
       // Validate file type
@@ -99,20 +113,40 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, buffer)
       profilePictureUrl = `/uploads/${fileName}`
     }
+    console.log('11. Profile picture handling complete, URL:', profilePictureUrl || 'none')
 
+    console.log('12. Creating animal with addAnimalServer...')
+    console.log('    - userId:', userId)
+    console.log('    - profilePictureUrl:', profilePictureUrl)
+    console.log('    - formData.name:', formData.name)
+    
     const animal = await addAnimalServer(formData, profilePictureUrl, userId)
+    console.log('13. Animal created successfully:', animal.id)
     
     return NextResponse.json(animal, { status: 201 })
   } catch (error) {
+    console.error('=== ERROR in POST /api/animals ===')
     console.error('Error creating animal:', error)
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+    
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      
+      if (error.message === 'Authentication required') {
+        console.error('Authentication failed - returning 401')
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        )
+      }
     }
+    
+    console.error('Unknown error - returning 500')
+    console.error('Error type:', typeof error)
+    console.error('Error constructor:', error?.constructor?.name)
+    
     return NextResponse.json(
-      { error: 'Failed to create animal' },
+      { error: 'Failed to create animal', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
