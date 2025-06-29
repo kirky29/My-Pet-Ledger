@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Search, Heart, Grid, List, Filter, Plus, Users, TrendingUp, Eye, EyeOff } from 'lucide-react'
 import AnimalGrid from '@/components/AnimalGrid'
 import { Animal } from '@/types/animal'
+import { getAnimals } from '@/lib/firestore-data'
 import { getSpeciesDisplayName } from '@/lib/utils'
 import { useSettings } from '@/lib/settings-context'
 import { useAuth } from '@/lib/auth-context'
@@ -32,25 +33,14 @@ export default function AnimalsPage() {
       }
 
       try {
-        const idToken = await user.getIdToken()
-        const response = await fetch('/api/animals', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
-        })
+        const data = await getAnimals()
+        setAllAnimals(data)
         
-        if (response.ok) {
-          const data = await response.json()
-          setAllAnimals(data)
-          
-          const filteredData = settings.display.showDeceased 
-            ? data 
-            : data.filter((animal: Animal) => !animal.deathDate)
-          setAnimals(filteredData)
-          setFilteredAnimals(filteredData)
-        } else {
-          console.error('Failed to fetch animals:', response.status)
-        }
+        const filteredData = settings.display.showDeceased 
+          ? data 
+          : data.filter((animal: Animal) => !animal.deathDate)
+        setAnimals(filteredData)
+        setFilteredAnimals(filteredData)
       } catch (error) {
         console.error('Error fetching animals:', error)
       } finally {

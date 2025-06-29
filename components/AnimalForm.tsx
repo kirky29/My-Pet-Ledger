@@ -7,6 +7,7 @@ import { AnimalFormData, AnimalSpecies, Animal } from '@/types/animal'
 import { getDefaultHeightUnit, getDefaultWeightUnit, getSpeciesDisplayName } from '@/lib/utils'
 import { useFieldOptions } from '@/lib/settings-context'
 import { useAuth } from '@/lib/auth-context'
+import { addAnimal, updateAnimal } from '@/lib/firestore-data'
 import { debugLog } from './DebugLogger'
 import { Heart, Calendar, Scale, Stethoscope, Camera, X } from 'lucide-react'
 
@@ -236,7 +237,7 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    debugLog.info('🚀 Form submission started', { 
+    debugLog.info('🚀 Form submission started (Client-side)', { 
       isEdit, 
       animalName: formData.name,
       hasProfilePicture: !!profilePicture 
@@ -258,88 +259,77 @@ export default function AnimalForm({ animal, isEdit = false }: AnimalFormProps) 
     setIsSubmitting(true)
 
     try {
-      debugLog.info('🔑 Getting user ID token...')
-      // Get the user's ID token
-      const idToken = await user.getIdToken()
-      debugLog.success('✅ ID token obtained', { tokenLength: idToken.length })
+      debugLog.info('📝 Preparing form data for direct Firestore call...')
       
-      const url = isEdit && animal ? `/api/animals/${animal.id}` : '/api/animals'
-      const method = isEdit ? 'PUT' : 'POST'
-      debugLog.info(`📡 Preparing ${method} request to ${url}`)
-      
-      // Use FormData for file upload
-      const formDataToSubmit = new FormData()
-      
-      // Add all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== '') {
-          formDataToSubmit.append(key, value)
-        }
-      })
-      debugLog.info('📝 Form data prepared', { 
-        fields: Object.keys(formData).filter(key => formData[key as keyof AnimalFormData] !== ''),
-        totalFields: Object.keys(formData).length
-      })
-      
-      // Add profile picture if selected
-      if (profilePicture) {
-        formDataToSubmit.append('profilePicture', profilePicture)
-        debugLog.info('📷 Profile picture added', { 
-          fileName: profilePicture.name,
-          fileSize: profilePicture.size,
-          fileType: profilePicture.type
-        })
+      // Handle profile picture (for now, use existing URL if editing, skip new uploads)
+      let profilePictureUrl = ''
+      if (isEdit && animal?.profilePicture) {
+        profilePictureUrl = animal.profilePicture
+        debugLog.info('📷 Using existing profile picture', { url: profilePictureUrl })
+      } else if (profilePicture) {
+        debugLog.warning('⚠️ New profile picture uploads not yet implemented in client-side mode')
+        // TODO: Implement Firebase Storage upload or alternative
       }
       
-      debugLog.info('🌐 Sending API request...')
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: formDataToSubmit, // Don't set Content-Type header, let browser set it with boundary
+      debugLog.info('🔥 Calling Firestore function directly...', { 
+        function: isEdit ? 'updateAnimal' : 'addAnimal',
+        animalId: animal?.id
       })
 
-      debugLog.info('📨 API response received', { 
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      })
+      let resultAnimal: Animal | null
+      
+      if (isEdit && animal) {
+        // Update existing animal
+        const updates: Partial<Animal> = {
+          name: formData.name,
+          species: formData.species,
+          breed: formData.breed || undefined,
+          dateOfBirth: formData.dateOfBirth || undefined,
+          deathDate: formData.deathDate || undefined,
+          sex: formData.sex,
+          color: formData.color || undefined,
+          markings: formData.markings || undefined,
+          medicalNotes: formData.medicalNotes || undefined,
+          specialNeeds: formData.specialNeeds || undefined,
+          microchipId: formData.microchipId || undefined,
+          registrationNumber: formData.registrationNumber || undefined,
+          ownerInfo: {
+            name: formData.ownerName,
+            email: formData.ownerEmail || undefined,
+            phone: formData.ownerPhone || undefined,
+            address: formData.ownerAddress || undefined,
+          }
+        }
+        
+        if (profilePictureUrl) {
+          updates.profilePicture = profilePictureUrl
+        }
+        
+        resultAnimal = await updateAnimal(animal.id, updates)
+      } else {
+        // Create new animal
+        resultAnimal = await addAnimal(formData, profilePictureUrl)
+      }
 
-      if (response.ok) {
-        const resultAnimal = await response.json()
-        debugLog.success('🎉 Animal created successfully!', { 
+      if (resultAnimal) {
+        debugLog.success('🎉 Animal operation successful!', { 
           animalId: resultAnimal.id,
-          animalName: resultAnimal.name
+          animalName: resultAnimal.name,
+          operation: isEdit ? 'updated' : 'created'
         })
         router.push(`/animals/${resultAnimal.id}`)
       } else {
-        const errorText = await response.text()
-        let errorData
-        try {
-          errorData = JSON.parse(errorText)
-        } catch {
-          errorData = { error: errorText }
-        }
-        
-        debugLog.error('❌ API Error Response', { 
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          errorText
-        })
-        
-        setErrors({ submit: errorData.error || `Failed to ${isEdit ? 'update' : 'add'} animal` })
+        throw new Error('Animal operation returned null')
       }
+      
     } catch (error) {
-      debugLog.error('💥 Network/Fetch Error', { 
+      debugLog.error('💥 Firestore Error', { 
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         errorStack: error instanceof Error ? error.stack : undefined,
         error
       })
       console.error('Error submitting form:', error)
-      setErrors({ submit: 'Network error. Please try again.' })
+      setErrors({ submit: `Failed to ${isEdit ? 'update' : 'add'} animal. Please try again.` })
     }
 
     setIsSubmitting(false)

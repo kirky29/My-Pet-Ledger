@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Edit, Calendar, Heart, MapPin, Scale, Ruler, Stethoscope, Hash, Award, User } from 'lucide-react'
 import { Animal } from '@/types/animal'
+import { getAnimalById } from '@/lib/firestore-data'
 import { calculateAge, calculateDetailedAge, formatDate, getSpeciesDisplayName, getSpeciesColor } from '@/lib/utils'
 import EventTimeline from '@/components/EventTimeline'
 import { useAuth } from '@/lib/auth-context'
@@ -29,19 +30,8 @@ export default function AnimalProfilePage({ params }: AnimalProfilePageProps) {
       }
 
       try {
-        const idToken = await user.getIdToken()
-        const response = await fetch(`/api/animals/${params.id}`, {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setAnimal(data)
-        } else if (response.status === 404) {
-          setAnimal(null)
-        }
+        const data = await getAnimalById(params.id)
+        setAnimal(data)
       } catch (error) {
         console.error('Error fetching animal:', error)
         setAnimal(null)
@@ -56,17 +46,8 @@ export default function AnimalProfilePage({ params }: AnimalProfilePageProps) {
     if (!user) return
 
     try {
-      const idToken = await user.getIdToken()
-      const response = await fetch(`/api/animals/${params.id}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setAnimal(data)
-      }
+      const data = await getAnimalById(params.id)
+      setAnimal(data)
     } catch (error) {
       console.error('Error refreshing animal:', error)
     }
