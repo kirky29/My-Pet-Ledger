@@ -1,34 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateAnimal } from '@/lib/firestore-data'
+import { getAnimalById, updateAnimal } from '@/lib/firestore-data'
 import { AnimalFormData } from '@/types/animal'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-
-// Conditional imports based on environment
-let getAnimalByIdFunc: any, requireAuthFunc: any
-
-if (process.env.NODE_ENV === 'development') {
-  console.log('Loading development modules for [id] route...')
-  const { getAnimalByIdDev } = require('@/lib/firestore-data-dev')
-  const { requireAuthDev } = require('@/lib/auth-server-dev')
-  getAnimalByIdFunc = getAnimalByIdDev
-  requireAuthFunc = requireAuthDev
-} else {
-  console.log('Loading production modules for [id] route...')
-  const { getAnimalByIdServer } = require('@/lib/firestore-data-server')
-  const { requireAuth } = require('@/lib/auth-server')
-  getAnimalByIdFunc = getAnimalByIdServer
-  requireAuthFunc = requireAuth
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await requireAuthFunc(request)
-    const animal = await getAnimalByIdFunc(params.id, userId)
+    const animal = await getAnimalById(params.id)
     
     if (!animal) {
       return NextResponse.json(
@@ -40,12 +22,6 @@ export async function GET(
     return NextResponse.json(animal)
   } catch (error) {
     console.error('Error fetching animal:', error)
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
     return NextResponse.json(
       { error: 'Failed to fetch animal' },
       { status: 500 }
@@ -58,7 +34,6 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await requireAuthFunc(request)
     const data = await request.formData()
     
     // Extract form fields
@@ -95,7 +70,7 @@ export async function PUT(
     }
 
     // Check if animal exists
-    const existingAnimal = await getAnimalByIdFunc(params.id, userId)
+    const existingAnimal = await getAnimalById(params.id)
     if (!existingAnimal) {
       return NextResponse.json(
         { error: 'Animal not found' },
