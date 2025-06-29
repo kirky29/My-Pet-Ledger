@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AppSettings, defaultSettings } from '@/types/settings'
+import { getSettings, updateSettings as updateSettingsFirestore, resetSettings as resetSettingsFirestore } from '@/lib/firestore-data'
+import { useAuth } from '@/lib/auth-context'
 
 interface SettingsContextType {
   settings: AppSettings
@@ -14,28 +16,34 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load settings on mount
+  // Load settings on mount when user is available
   useEffect(() => {
-    loadSettings()
-  }, [])
+    if (user) {
+      loadSettings()
+    } else {
+      setIsLoading(false)
+      setSettings(defaultSettings)
+    }
+  }, [user])
 
   const loadSettings = async () => {
+    if (!user) {
+      setSettings(defaultSettings)
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
       
-      const response = await fetch('/api/settings')
-      if (response.ok) {
-        const data = await response.json()
-        setSettings(data)
-      } else {
-        console.warn('Failed to load settings, using defaults')
-        setSettings(defaultSettings)
-      }
+      const data = await getSettings()
+      setSettings(data)
     } catch (error) {
       console.error('Error loading settings:', error)
       setError('Failed to load settings')
@@ -46,26 +54,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   const updateSettings = async (updates: Partial<AppSettings>) => {
+    if (!user) {
+      throw new Error('User must be authenticated to update settings')
+    }
+
     try {
       setError(null)
       
-      const updatedSettings = { ...settings, ...updates }
-      
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedSettings),
-      })
-
-      if (response.ok) {
-        const savedSettings = await response.json()
-        setSettings(savedSettings)
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update settings')
-      }
+      const savedSettings = await updateSettingsFirestore(updates)
+      setSettings(savedSettings)
     } catch (error) {
       console.error('Error updating settings:', error)
       setError(error instanceof Error ? error.message : 'Failed to update settings')
@@ -74,20 +71,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   const resetSettings = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated to reset settings')
+    }
+
     try {
       setError(null)
       
-      const response = await fetch('/api/settings', {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        const resetSettingsData = await response.json()
-        setSettings(resetSettingsData)
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to reset settings')
-      }
+      const resetSettingsData = await resetSettingsFirestore()
+      setSettings(resetSettingsData)
     } catch (error) {
       console.error('Error resetting settings:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset settings')

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { EventEntry, EventType } from '@/types/animal'
+import { addEventEntry, updateEventEntry } from '@/lib/firestore-data'
 import { Save, X } from 'lucide-react'
 import { useCurrency } from '@/lib/settings-context'
 
@@ -71,12 +72,6 @@ export default function AddEventForm({ animalId, event, onSuccess, onCancel }: A
     setIsSubmitting(true)
 
     try {
-      const url = event 
-        ? `/api/animals/${animalId}/events/${event.id}`
-        : `/api/animals/${animalId}/events`
-      
-      const method = event ? 'PUT' : 'POST'
-      
       const eventData = {
         type: formData.type,
         title: formData.title,
@@ -87,22 +82,18 @@ export default function AddEventForm({ animalId, event, onSuccess, onCancel }: A
         cost: formData.cost ? parseFloat(formData.cost) : undefined,
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(eventData),
-      })
-
-      if (response.ok) {
-        onSuccess()
+      if (event) {
+        // Update existing event
+        await updateEventEntry(animalId, event.id, eventData)
       } else {
-        const error = await response.json()
-        setErrors({ submit: error.message || `Failed to ${event ? 'update' : 'add'} event` })
+        // Add new event
+        await addEventEntry(animalId, eventData)
       }
+
+      onSuccess()
     } catch (error) {
-      setErrors({ submit: 'Network error. Please try again.' })
+      console.error('Error saving event:', error)
+      setErrors({ submit: `Failed to ${event ? 'update' : 'add'} event. Please try again.` })
     }
 
     setIsSubmitting(false)

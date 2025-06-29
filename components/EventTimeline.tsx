@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { EventEntry, EventType } from '@/types/animal'
+import { deleteEventEntry } from '@/lib/firestore-data'
 import { useCurrency, useDateFormat } from '@/lib/settings-context'
 import { 
   Calendar, 
@@ -93,20 +94,11 @@ export default function EventTimeline({
     setIsDeleting(eventId)
 
     try {
-      const response = await fetch(`/api/animals/${animalId}/events/${eventId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        onEventDeleted()
-      } else {
-        const errorData = await response.json()
-        console.error('Failed to delete event:', errorData)
-        alert(errorData.error || 'Failed to delete event')
-      }
+      await deleteEventEntry(animalId, eventId)
+      onEventDeleted()
     } catch (error) {
       console.error('Error deleting event:', error)
-      alert('Network error. Please try again.')
+      alert('Failed to delete event. Please try again.')
     } finally {
       setIsDeleting(null)
     }
